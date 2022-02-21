@@ -73,5 +73,27 @@ int main()
     // uniformly refine the topology up to maxLevel
     refiner->RefineUniform(Far::TopologyRefiner::UniformOptions(maxLevel));
 
+    // allocate a buffer for the primvar data
+    std::cout << "Refiner: Total number of vertices = " << refiner->GetNumVerticesTotal() << std::endl;
+    std::vector<Vertex> vertexBuffer(refiner->GetNumVerticesTotal());
+    Vertex *vertices = &vertexBuffer[0];
+
+    // initialize coarse mesh
+    int numberCoarseVertices = cube::nVerts;
+    for (int i = 0; i < numberCoarseVertices; ++i)
+    {
+        vertices[i].setPosition(cube::vertices[i][0], cube::vertices[i][1], cube::vertices[i][2]);
+    }
+
+    // interpolate vertex data
+    Far::PrimvarRefiner primvarRefiner(*refiner);
+
+    Vertex *source = vertices;
+    for (int level = 0; level <= maxLevel; ++level)
+    {
+        Vertex *dest = source + refiner->GetLevel(level - 1).GetNumVertices();
+    }
+
+
     return 0;
 }
