@@ -8,7 +8,7 @@
 struct Vertex {
     Vertex()
     {
-        clear();
+        Clear();
     };
 
     Vertex(Vertex const & source)
@@ -18,12 +18,12 @@ struct Vertex {
         mPosition[2] = source.mPosition[2];
     }
 
-    void clear(void* = nullptr)
+    void Clear(void* = nullptr)
     {
         mPosition[0] = mPosition[1] = mPosition[2] = 0.0f;
     }
 
-    void addWithWeight(Vertex const & source, float weight)
+    void AddWithWeight(Vertex const & source, float weight)
     {
         mPosition[0] += weight * source.mPosition[0];
         mPosition[1] += weight * source.mPosition[1];
@@ -56,6 +56,7 @@ int main()
     // Populate the topology refiner.
     Sdc::SchemeType type = OpenSubdiv::Sdc::SCHEME_CATMARK;
 
+
     Sdc::Options options;
     options.SetVtxBoundaryInterpolation(Sdc::Options::VTX_BOUNDARY_EDGE_ONLY);
 
@@ -68,7 +69,7 @@ int main()
     Far::TopologyRefiner* refiner = Far::TopologyRefinerFactory<Far::TopologyDescriptor>::Create(descriptor,
         Far::TopologyRefinerFactory<Far::TopologyDescriptor>::Options(type, options));
 
-    int maxLevel = 2;
+    int maxLevel = 6;
 
     // uniformly refine the topology up to maxLevel
     refiner->RefineUniform(Far::TopologyRefiner::UniformOptions(maxLevel));
@@ -89,11 +90,42 @@ int main()
     Far::PrimvarRefiner primvarRefiner(*refiner);
 
     Vertex *source = vertices;
-    for (int level = 0; level <= maxLevel; ++level)
+    for (int level = 1; level <= maxLevel; ++level)
     {
         Vertex *dest = source + refiner->GetLevel(level - 1).GetNumVertices();
+        primvarRefiner.Interpolate(level, source, dest);
+        source = dest;
     }
 
+    // output the obj file with the most refined level
+    Far::TopologyLevel const & refLastLevel = refiner->GetLevel(maxLevel);
+    int numVerts = refLastLevel.GetNumVertices();
+    int numFaces = refLastLevel.GetNumFaces();
+
+    FILE* output = fopen("output1.obj", "w");
+
+    int firstOfLastSetOfVertices = refiner->GetNumVerticesTotal() - numVerts;
+
+    // vertex positions
+    for (int vert = 0; vert < numVerts; ++vert)
+    {
+        float const* pos = vertices[firstOfLastSetOfVertices + vert].getPosition();
+        fprintf(output, "v %f %f %f\n", pos[0], pos[1], pos[2]);
+    }
+
+    // faces
+    for (int face = 0; face < numFaces; ++face)
+    {
+        Far::ConstIndexArray faceVertices = refLastLevel.GetFaceVertices(face);
+        fprintf(output, "f ");
+        for (int vert = 0; vert < faceVertices.size(); ++vert)
+        {
+            fprintf(output, "%d ", faceVertices[vert]+1);
+        }
+        fprintf(output, "\n");
+    }
+
+    fclose(output);
 
     return 0;
 }
